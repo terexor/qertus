@@ -35,5 +35,5 @@ if( openssl_sign($data, $binarySignature, $privateKeyPem, OPENSSL_ALGO_SHA256) )
 	$qr .= urlencode($data);
 
 	//saving image
-	file_put_contents('vacunaCert.png', file_get_contents($qr));
+	file_put_contents('certQR.png', file_get_contents($qr));
 }

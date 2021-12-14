@@ -10,56 +10,67 @@
 		<div style="width: 500px" id="reader"></div>
 		<h5>Copyright &copy; 2021 Terexor</h5>
 		<script>
-			function onScanSuccess(decodedText, decodedResult) {
-				const tresPartes = decodedText.split(",")
-				const __datos = (tresPartes[0] + ',' + tresPartes[1] + ',')
-				const __firma = tresPartes[2]
+			//Public Key Terexoris Salutis
+			const pemEncodedKey = `-----BEGIN PUBLIC KEY-----
+				MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1+JfO//8yVbKBliGkiOqpEGNUpbk0Q5DE/U+qzETm24f8V4Naiv3IwlYFzfkn/aUqToA8IGauLD3v4mfOOk3KVza6EwI6crK5CN8WZfs1282EPKIYB5OuQtyLkcQ53EwpStqF57oPcEtbe7ZbdTAuWY6cydHFmL1LsVUYh8CP5LM8MlLIDgZhtr3sOMeWXeRFYUmBUQiNVlloZVDcfz0wO8Nf8MziIBP+IaOwS/XUbE1aAZeGn0Muwkx0obkU7NuWwfa2x53iyW4qN6pVIc1plaAr7mP1McuM6jxxNdxUzdSZXKMJYHUqnPXE+8Qg0rXlkAaT7WXz5RclAM22NbJowIDAQAB
+				-----END PUBLIC KEY-----`
+			var publicKey = null
 
-				importRsaKey(pemEncodedKey).then(function(publicKey) {
-					let datos = getMessageEncoding(__datos)
-					console.log(__datos)
-					let $firma = getBase64ToArrayBuffer(__firma)
-					crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, $firma, datos).then(function(exitoso) {
-						if(exitoso) {
-							alert("CERTIFICADO VÁLIDO. Dosis: " + tresPartes[1])
-						}
-						else {
-							alert("QR alterado")
-						}
-					})
+			function validate(binarySignature, binaryData, dataParts) {
+				crypto.subtle.verify("RSASSA-PKCS1-v1_5", publicKey, binarySignature, binaryData).then(function(success) {
+					if(success) {
+						alert("CERTIFICADO VÁLIDO. Dosis: " + dataParts[1])
+					}
+					else {
+						alert("QR alterado")
+					}
 				})
+			}
+
+			function onScanSuccess(decodedText, decodedResult) {
+				const parts = decodedText.split(",")
+				const __data = (parts[0] + ',' + parts[1] + ',')
+				const __signature = parts[2]
+				const binaryData = getMessageToArrayBuffer(__data)
+				const binarySignature = getBase64ToArrayBuffer(__signature)
+
+				if(publicKey == null) {
+					importRsaKey(pemEncodedKey).then(function(pk) {
+						publicKey = pk
+						validate(binarySignature, binaryData, parts)
+					})
+				}
+				else {
+					validate(binarySignature, binaryData, parts)
+				}
 			}
 
 			var html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 })
 			html5QrcodeScanner.render(onScanSuccess)
 
-			function getMessageEncoding(data) {
-				let enc = new TextEncoder();
-				return enc.encode(data);
+			function getMessageToArrayBuffer(data) {
+				let enc = new TextEncoder()
+				return enc.encode(data)
 			}
-			function getBase64ToArrayBuffer(firmaBase64) {
-				var binary_string = window.atob(firmaBase64);
-				var len = binary_string.length;
-				var bytes = new Uint8Array(len);
-				for (var i = 0; i < len; i++) {
-					bytes[i] = binary_string.charCodeAt(i);
+			function getBase64ToArrayBuffer(base64) {
+				const binaryString = window.atob(base64);
+				const len = binaryString.length;
+				const bytes = new Uint8Array(len);
+				for(let i = len - 1; i >= 0; --i) {
+					bytes[i] = binaryString.charCodeAt(i);
 				}
 				return bytes.buffer;
 			}
 			// from https://developers.google.com/web/updates/2012/06/How-to-convert-ArrayBuffer-to-and-from-String
 			function str2ab(str) {
-				const buf = new ArrayBuffer(str.length);
-				const bufView = new Uint8Array(buf);
-				for (let i = 0, strLen = str.length; i < strLen; i++) {
-				  bufView[i] = str.charCodeAt(i);
+				const len = str.length
+				const buffer = new ArrayBuffer(len)
+				const bufView = new Uint8Array(buffer);
+				for(let i = len - 1; i >= 0; --i) {
+					bufView[i] = str.charCodeAt(i);
 				}
-				return buf;
+				return buffer;
 			}
-
-			//Clave pública Terexoris Salutis
-			const pemEncodedKey = `-----BEGIN PUBLIC KEY-----
-			MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1+JfO//8yVbKBliGkiOqpEGNUpbk0Q5DE/U+qzETm24f8V4Naiv3IwlYFzfkn/aUqToA8IGauLD3v4mfOOk3KVza6EwI6crK5CN8WZfs1282EPKIYB5OuQtyLkcQ53EwpStqF57oPcEtbe7ZbdTAuWY6cydHFmL1LsVUYh8CP5LM8MlLIDgZhtr3sOMeWXeRFYUmBUQiNVlloZVDcfz0wO8Nf8MziIBP+IaOwS/XUbE1aAZeGn0Muwkx0obkU7NuWwfa2x53iyW4qN6pVIc1plaAr7mP1McuM6jxxNdxUzdSZXKMJYHUqnPXE+8Qg0rXlkAaT7WXz5RclAM22NbJowIDAQAB
-			-----END PUBLIC KEY-----`;
 
 			function importRsaKey(pem) {
 				// fetch the part of the PEM string between header and footer
@@ -72,15 +83,15 @@
 				const binaryDer = str2ab(binaryDerString);
 
 				return window.crypto.subtle.importKey(
-				  "spki",
-				  binaryDer,
-				  {
-					name: "RSASSA-PKCS1-v1_5",
-					hash: "SHA-256"
-				  },
-				  true,
-				  ["verify"]
-				);
+					"spki",
+					binaryDer,
+					{
+						name: "RSASSA-PKCS1-v1_5",
+						hash: "SHA-256"
+					},
+					true,
+					["verify"]
+				)
 			}
 		</script>
 	</body>
