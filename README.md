@@ -5,3 +5,5 @@ El código QR generado en el servidor (con PHP) contiene datos necesarios que se
 Ese QR es decodificado por la aplicación (con JavaScript) y verifica si la firma fue hecha por el servidor.
 
 Se usa encriptación asimétrica RSA con 2048 bits. Se distribuye la clave pública.
+
+Vídeo explicativo: https://www.youtube.com/watch?v=w3MWiFxtgkw
